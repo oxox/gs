@@ -1,0 +1,280 @@
+<!doctype html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<title>gridhelper</title>
+	<link rel="stylesheet" href="css/style.css" />
+	<script src="js/jquery.min.js"></script>
+	<script src="js/jquery.gridhelper.js"></script>
+</head>
+<body>
+	<!-- 头部 s -->
+	<div class="layout_hd">
+		<h1 class="hd_logo"><a href="#"><img src="img/logo.png" alt="gridhelper" /></a></h1>
+	</div>
+	<!-- 头部 e -->
+
+	<!-- 主体 s -->
+	<div class="layout_bd">
+		<!-- 图片选取 s -->
+		<div class="img_selection" id="J_imgSelection">
+			<div class="img_drag_area" id="J_dragArea">
+				<img src="img/bg.png" alt="图片名称" />
+				<p>请将图片文件拖到这里<!--<br />或者点击选择计算机中的文件--></p>
+				<!--<input type="text" placeholder="你也可以输入文件的网络地址" />-->
+			</div>
+		</div>
+		<!-- 图片选取 e -->
+
+		<!-- 栅格检测 s -->
+		<div class="gird_validation" id="J_girdValidation" style="display:none;">
+			<div class="gird_validation_hd">
+				<div class="gird_validation_hd_inner clearfix">
+					<div class="hd_left">
+						<a href="#" id="J_backToFirst" class="ui_btn btn_back">返回上一步</a>
+						<span class="pos_adjust_tips">
+							鼠标拖拽可调整柵格层；点选后，箭头键可调整柵格层（1px位移），同时按shift可快速移动（10px）</p>
+						</span>
+					</div>
+					<div class="hd_right">
+						<a href="#" id="J_showTrigger" class="ui_btn fl">隐藏栅格</a>
+						<div class="grid_settings fl" id="J_gridSettingsWrap">
+							<a href="#" id="J_showSettings" class="ui_btn btn_settings">设置栅格</a>
+							<div class="grid_settings_ctn" id="J_gridSettings" style="display:none;">
+								<ul class="grid_settings_rows clearfix">
+									<li>
+										<div class="tit"><label>页面主体宽：</label></div>
+										<div class="ctn">
+											<input type="text" value="1190" id="J_gridWidth" />
+										</div>
+									</li>
+									<li>
+										<div class="tit"><label>单元格宽：</label></div>
+										<div class="ctn">
+											<input type="text" value="40" id="J_cellWidth" />
+										</div>
+									</li>
+									<li>
+										<div class="tit"><label>间隙宽：</label></div>
+										<div class="ctn">
+											<input type="text" value="10" id="J_gutterWidth" />
+										</div>
+									</li>
+									<li>
+										<div class="tit"><label>单元格颜色：</label></div>
+										<div class="ctn">
+											<input type="color" class="grid_color_picker" id="J_gridColor" value="#FF8A00"/>	
+										</div>
+										<!--<div class="ctn grid_color_select" id="J_cellBgColor">
+											<span class="color_item color_item_selected" style="background:#FF8A00" data-color="#FF8A00"></span>
+											<span class="color_item" style="background:#EF4372" data-color="#EF4372"></span>
+										</div>-->
+									</li>
+									<li>
+										<div class="tit"><label>栅格层透明度：</label></div>
+										<div class="ctn">
+											<input type="range" id="J_opacity" min="0" max="1" step="0.1" value="0.3"/>
+											<span>0.3</span>
+										</div>
+									</li>
+									<!--<li>
+										<div class="tit"><label>栅格高：</label></div>
+										<div class="ctn">
+											<input type="text" id="J_gridHeight"/>
+											<p class="settings_tips">可不设，默认取图片高</p>
+										</div>
+									</li>-->
+								</ul>
+								<div class="grid_settings_btns">
+									<a href="#" id="J_createGS" class="ui_btn">确定</a>
+								</div>
+								
+							</div>
+						</div>
+					</div>
+				</div>
+				
+				
+				
+			</div>
+
+			<div class="gird_validation_bd">
+				<div class="img_file_wrap" id="J_imgFileWrap">
+					<img id="J_imgFile" draggable="false"/>
+				</div>
+			</div>
+		</div>
+		<!-- 栅格检测 e -->
+	</div>
+	<!-- 主体 e -->
+
+	<script>
+		(function($){
+			//执行初始化
+			init();
+
+
+			//初始化
+			function init(){
+				var isSupport = getSupport();
+				if (!isSupport) {
+					$('#J_dragArea').append('<p class="support_tips">仅支持chrome、firefox等高级浏览器</p>');
+					return ;
+				}
+
+				bindEvent();
+			}
+
+
+			//绑定事件
+			function bindEvent(){
+				//文件拖拽
+				$('#J_dragArea').on('dragover', function(e){
+					e.preventDefault();
+					e.stopPropagation();
+					$(this).addClass('on_drag_over');
+				}).on('dragleave', function(e){
+					$(this).removeClass('on_drag_over');
+				}).on('drop', function(e){
+					e.preventDefault();
+					e.stopPropagation();
+					$(this).removeClass('on_drag_over');
+					//暂只解析第一个文件 TO DO 考虑弄个列表
+					var files = e.originalEvent.dataTransfer.files;
+					var curFile = files[0];
+					if (!/^image\/.+$/.test(curFile.type)) {
+						alert('文件只能为图片格式，如：jpg,png,gif等。');
+						return ;
+					}
+					readFile(curFile);
+				});
+
+				//图片onload
+				$('#J_imgFile').on('load', function(e){
+				 	$('#J_imgFileWrap').css({
+						width: $('#J_imgFile').width(),
+						height: $('#J_imgFile').height(),
+					});
+					createGS();
+				});
+
+
+				//返回拖拽文件步骤
+				$('#J_backToFirst').on('click', function(e){
+				 	e.preventDefault();
+					var instance = $('#J_imgFileWrap').getGridhelperInstance();
+					if (instance) {
+						instance.destroy();
+					}
+					$('#J_imgFile').removeAttr('src');
+					$('#J_imgSelection').show();
+					$('#J_girdValidation').hide();
+				});
+
+				//颜色
+				/*$('#J_cellBgColor .color_item').on('click', function(e){
+					$(this).addClass('color_item_selected').siblings().removeClass('color_item_selected');
+					var instance = $('#J_imgFileWrap').getGridhelperInstance();
+					if (instance) {
+						instance.setColor($(this).data('color'));
+					}
+				});*/
+
+				//透明度显示
+				$('#J_opacity').on('change', function(){
+					$(this).next('span').text($(this).val());
+				});
+
+				//栅格设置
+				$('#J_showSettings').on('click', function(e){
+					e.preventDefault();
+					if ($('#J_gridSettings').is(':visible')) {
+						$('#J_gridSettings').hide();
+					} else {
+						$('#J_gridSettings').show();
+					}
+				});
+				$(document).on('click', function(e){
+					var target  = e.target || e.srcElement;
+					if($(target).closest($('#J_gridSettingsWrap')).length == 0){
+						$('#J_gridSettings').hide();
+					}
+				});
+
+				//确定生成栅格
+				$('#J_createGS').on('click', function(e){
+					e.preventDefault();
+					createGS();
+				});
+
+				//显示隐藏栅格
+				$('#J_showTrigger').on('click', function(e){
+					e.preventDefault();
+					var instance = $('#J_imgFileWrap').getGridhelperInstance();
+					if (!instance) {
+						return ;
+					}
+					if ($(this).data('gridShow') !== false ) {
+						instance.hide();
+						$('#J_showTrigger').data('gridShow',false).text('显示栅格');
+					} else {
+						instance.show();
+						$('#J_showTrigger').data('gridShow',true).text('隐藏栅格');
+					}
+				});
+
+				//禁掉浏览器本身拖拽打开文件的行为
+				$(window).on('dragover  drop', function(e){
+					e.preventDefault();
+					e.stopPropagation();
+				});
+			}
+
+
+			//drag & drop事件的统一处理部分
+			function handleDrag(e){
+				e.preventDefault();
+				e.stopPropagation();
+				if (e.type == 'dragover') {
+					$(this).addClass('on_drag_over');
+				} else {
+					$(this).removeClass('on_drag_over');
+				}
+			}
+			
+
+			//检查浏览器支持
+			function getSupport(){
+				var div = document.createElement('div');
+       			var dragSuppoot = 'draggable' in div || ('ondragstart' in div && 'ondrop' in div);
+       			return dragSuppoot && window.File;
+			}
+
+			//FileReader解析图片文件
+			function readFile(file){
+				var fileReader = new FileReader();
+				fileReader.onload = function(e){
+					$('#J_imgSelection').hide();
+					$('#J_girdValidation').show();
+		            $('#J_imgFile').attr('src', e.target.result);
+        		}
+				fileReader.readAsDataURL(file);
+			}
+
+			//生成栅格
+			function createGS(){
+				var options = {
+					gridWidth: $('#J_gridWidth').val(),
+					//gridHeight: $('#J_gridHeight').val(),
+					cellWidth: $('#J_cellWidth').val(),
+					gutterWidth: $('#J_gutterWidth').val(),
+					cellBgColor: $('#J_gridColor').val(),
+					opacity: $('#J_opacity').val()
+				};
+				$('#J_imgFileWrap').gridhelper(options);
+				$('#J_showTrigger').data('gridShow',true).text('隐藏栅格');
+			}
+		})(jQuery);
+	</script>
+</body>
+</html>
